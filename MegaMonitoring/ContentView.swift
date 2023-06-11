@@ -1,13 +1,5 @@
-//
-//  ContentView.swift
-//  MegaMonitoring
-//
-//  Created by Nestor Adrian Sandoval Ortiz on 10/06/23.
-//
-
 import SwiftUI
 import MapKit
-
 
 struct ContentView: View {
     @State private var choices = ["All", "Missed"]
@@ -25,17 +17,72 @@ struct ContentView: View {
         let annotation: MKPointAnnotation
     }
     
+    struct GauageTemp {
+        var id = UUID() // Use UUID as the identifier
+        var subtitle: String
+    }
+    
+    struct GauageExample: View {
+        var celsius: GauageTemp // Correct the spelling of GaugeTemp
+        
+        private let minValue = 16.0
+        private let maxValue = 25.0
+        
+        let gradient = Gradient(colors: [.blue, .green, .orange])
+        
+        var body: some View {
+            VStack {
+                Gauge(value: Double(celsius.subtitle) ?? 0, in: minValue...maxValue) { // Convert the subtitle to a Double
+                    Label("Temperature (°C)", systemImage: "thermometer.medium")
+                } currentValueLabel: {
+                    Text("\(celsius.subtitle)°")
+                        .foregroundColor(.green)
+                } minimumValueLabel: {
+                    Text("16")
+                        .foregroundColor(.blue)
+                } maximumValueLabel: {
+                    Text("25")
+                        .foregroundColor(.orange)
+                }
+                .tint(gradient)
+            }
+            .gaugeStyle(.accessoryCircular)
+        }
+    }
+    
+    struct GauageExampleHu: View {
+        var hu: GauageTemp // Correct the spelling of GaugeTemp
+        
+        private let minValue = 0.0
+        private let maxValue = 100.0
+        
+        let gradient = Gradient(colors: [.blue, .green, .orange])
+        
+        var body: some View {
+            VStack {
+                Gauge(value: Double(hu.subtitle) ?? 0, in: minValue...maxValue) { // Convert the subtitle to a Double
+                    Label("hu (%)", systemImage: "humidity").foregroundColor(.green)
+                } currentValueLabel: {
+                    Text("\(hu.subtitle)%")
+                        .foregroundColor(.green)
+                }
+                .tint(gradient)
+            }
+            .gaugeStyle(.accessoryCircular)
+        }
+    }
+    
     var annotations: [AnnotationItem] {
         // Generate map annotations based on the selected filter
         if selectedFilter == "Temperature" {
             return [
-                AnnotationItem(annotation: makeAnnotation(coordinate: CLLocationCoordinate2D(latitude: 37.5666791, longitude: 126.9782914), title: "Location 1", subtitle: "Temperature: 25°C")),
-                AnnotationItem(annotation: makeAnnotation(coordinate: CLLocationCoordinate2D(latitude: 37.600000, longitude: 127.000000), title: "Location 2", subtitle: "Temperature: 28°C"))
+                AnnotationItem(annotation: makeAnnotation(coordinate: CLLocationCoordinate2D(latitude: 37.5666791, longitude: 126.9782914), subtitle: "18")),
+                AnnotationItem(annotation: makeAnnotation(coordinate: CLLocationCoordinate2D(latitude: 37.600000, longitude: 127.000000), subtitle: "24"))
             ]
         } else if selectedFilter == "Humidity" {
             return [
-                AnnotationItem(annotation: makeAnnotation(coordinate: CLLocationCoordinate2D(latitude: 37.5666791, longitude: 126.9782914), title: "Location 1", subtitle: "Humidity: 60%")),
-                AnnotationItem(annotation: makeAnnotation(coordinate: CLLocationCoordinate2D(latitude: 37.600000, longitude: 127.000000), title: "Location 2", subtitle: "Humidity: 55%"))
+                AnnotationItem(annotation: makeAnnotation(coordinate: CLLocationCoordinate2D(latitude: 37.5666791, longitude: 126.9782914), subtitle: "60")),
+                AnnotationItem(annotation: makeAnnotation(coordinate: CLLocationCoordinate2D(latitude: 37.600000, longitude: 127.000000), subtitle: "55"))
             ]
         } else {
             return []
@@ -58,66 +105,59 @@ struct ContentView: View {
                     .padding(.trailing) // Add padding to align the "Add" button to the right
                     .padding(.bottom) // Add padding below the "Add" button
                     
-                    Picker("Choose a filter", selection: $selectedFilter) {
-                        ForEach(filters, id: \.self) { filter in
-                            Text(filter)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .frame(width: geometry.size.width * 0.9) // Set segment control width to 90% of the available width
-                    
-                    Spacer()
-                    Map(coordinateRegion: $region, annotationItems: annotations) { item in
-                        MapAnnotation(coordinate: item.annotation.coordinate) {
-                            VStack {
-                                Text(item.annotation.title ?? "")
-                                    .font(.headline)
-                                Text(item.annotation.subtitle ?? "")
-                                    .font(.subheadline)
+                    Picker("Choose a filter", selection: $selectedFilter
+                    ) {
+                                            ForEach(filters, id: \.self) { filter in
+                                                Text(filter)
+                                            }
+                                        }
+                                        .pickerStyle(SegmentedPickerStyle())
+                                        .frame(width: geometry.size.width * 0.9) // Set picker width to 90% of the available width
+                                        
+                                        Spacer()
+                                        Map(coordinateRegion: $region, annotationItems: annotations) { item in
+                                            MapAnnotation(coordinate: item.annotation.coordinate) {
+                                                VStack {
+                                                    if selectedFilter == "Temperature" {
+                                                        GauageExample(celsius: GauageTemp(subtitle: item.annotation.subtitle ?? "")) // Pass the subtitle value to GaugeExample
+                                                    } else if selectedFilter == "Humidity" {
+                                                        GauageExampleHu(hu: GauageTemp(subtitle: item.annotation.subtitle ?? "")) // Pass the subtitle value to GaugeExample
+                                                    }
+                                                    
+                                    
+                                                }
+                                                .padding(4)
+                                                .background(Color.white)
+                                                .cornerRadius(100)
+                                                .shadow(radius: 4)
+                                            }
+                                        }
+                                        
+                                    }
+                                    .sheet(isPresented: $showAddPage) {
+                                        AddPage() // Show the add page when the state is true
+                                    }
+                                }
                             }
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(8)
-                            .shadow(radius: 4)
+                        }
+                        
+                        private func makeAnnotation(coordinate: CLLocationCoordinate2D, subtitle: String) -> MKPointAnnotation {
+                            let annotation = MKPointAnnotation()
+                            annotation.coordinate = coordinate
+                            annotation.subtitle = subtitle
+                            return annotation
                         }
                     }
 
-
-                    
-                    // List {
-                    //     Text("asdas")
-                    // }
-                }
-                .sheet(isPresented: $showAddPage) {
-
-                    AddPage() // Show the add page when the state is true
-                }
-            }
-        }
-    }
-    
-    private func makeAnnotation(coordinate: CLLocationCoordinate2D, title: String,
- subtitle: String) -> MKPointAnnotation {
-        let annotation = MKPointAnnotation()
-        annotation.coordinate = coordinate
-        annotation.title = title
-        annotation.subtitle = subtitle
-        return annotation
-    }
-}
-
-struct AddPage: View {
-    var body: some View {
-        VStack {
-            List {
-                Section(header: Text("Scaned by wifi"))
- {
-                     Text("Staria Device")
-                     Text("Staria Device")
-                      }
-       
-             }
-        }
-
-    }
-}
+                    struct AddPage: View {
+                        var body: some View {
+                            VStack {
+                                List {
+                                    Section(header: Text("Scanned by Wi-Fi")) {
+                                        Text("Staria Device")
+                                        Text("Staria Device")
+                                    }
+                                }
+                            }
+                        }
+                    }
